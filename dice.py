@@ -1,7 +1,7 @@
 import argparse
 import discord
 import os
-import random
+from random import Random
 import re
 import sys
 import unittest
@@ -54,6 +54,68 @@ class DiceRETest(unittest.TestCase):
         self.assertEqual(my_match.group('hilo'), 'h', 'dXXkXh')
 
 
+random = Random()
+
+
+def perform_roll(die: int,
+                 count: int = 1, keep: int = 0, hilo: str = 'h'
+                 ) -> tuple[list[int], list[int]]:
+    if keep == 0 or keep > count:
+        keep = count
+    dice = [random.randint(1, die) for x in range(count)]
+    in_order = sorted(dice)
+    if hilo == 'h':
+        in_order.reverse()
+    kept = in_order[0:keep]
+    return dice, kept
+
+
+def format_dice(dice: list[int], kept: list[int]) -> str:
+    return ', '.join(f'**{x}**' if x in kept else str(x) for x in dice) \
+        + f' (sum = {sum(kept)})'
+
+
+class DiceRollTest(unittest.TestCase):
+    def setUp(self) -> None:
+        global random
+        random = Random(12345)
+
+    def test_5_for_5(self) -> None:
+        dice, kept = perform_roll(20, count=5)
+        self.assertEqual(dice, [14, 1, 10, 12, 7], "5 random dice")
+        self.assertEqual(kept, [14, 12, 10, 7, 1], "5 random dice from high")
+
+    def test_5_for_5_low(self) -> None:
+        dice, kept = perform_roll(20, count=5, hilo='l')
+        self.assertEqual(kept, [1, 7, 10, 12, 14], "5 random dice from low")
+
+    def test_roll_2_keep_high(self) -> None:
+        dice, kept = perform_roll(20, count=2, keep=1)
+        self.assertEqual(dice, [14, 1], "2 dice keep high")
+        self.assertEqual(kept, [14], "1 high die kept")
+
+    def test_roll_2_keep_low(self) -> None:
+        dice, kept = perform_roll(20, count=2, keep=1, hilo='l')
+        self.assertEqual(dice, [14, 1], "2 dice keep low")
+        self.assertEqual(kept, [1], "1 low die kept")
+
+    def test_other_dice(self) -> None:
+        dice, kept = perform_roll(6, count=3)
+        self.assertEqual(dice, [4, 6, 1], "3 6-sided dice")
+
+    def test_formatting(self) -> None:
+        dice, kept = perform_roll(20, count=2, keep=1)
+        response = format_dice(dice, kept)
+        self.assertEqual(response, '**14**, 1 (sum = 14)',
+                         "formatting advantage roll")
+
+    def test_formatting_sum(self) -> None:
+        dice, kept = perform_roll(6, count=3, keep=3)
+        response = format_dice(dice, kept)
+        self.assertEqual(response, '**4**, **6**, **1** (sum = 11)',
+                         "formatting 3d6")
+
+
 intents = discord.Intents.default()
 client = discord.Client(intents=intents)
 bot = commands.Bot(command_prefix='!', intents=intents)
@@ -76,12 +138,8 @@ async def roll(ctx, dice: str):
         die = int(dice_format.group('die'))
         keep = int(dice_format.group('keep')) or count
         hilo = dice_format.group('hilo') or 'h'
-        dice = [random.randint(1, die) for x in range(count)]
-        if keep < count:
-            dice.sort()
-            if hilo == 'h':
-                dice.reverse
-        response = ''
+        dice, kept = perform_roll(count, die=die, keep=keep, hilo=hilo)
+        response = format_dice(dice, kept)
     await ctx.send(response)
 
 

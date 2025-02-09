@@ -169,10 +169,15 @@ async def roll(ctx, dice: str):
 
 @bot.command()
 async def list_command(ctx):
+    await list_commands(ctx)
+
+
+@bot.command()
+async def list_commands(ctx):
     response = '''
 You can use the following commands:
 \t!roll
-\t!list_command
+\t!list_commands
 \t!functions
     '''
     await ctx.send(response)

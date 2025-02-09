@@ -130,6 +130,10 @@ class RollerBot(discord.Client):
                 response += self.format_dice(dice, kept) + ' '
                 op = ''
                 first_arg = False
+                continue
+
+            if first_arg:
+                response += f'{arg} '
         if len(args) > 1:
             response += f'(sum = {my_sum})'
         return response

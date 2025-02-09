@@ -162,6 +162,21 @@ class DiceRollTest(unittest.TestCase):
             '- 5 + (**14**, 1) (sum = 9)',
             'roll method with inital negative')
 
+    # XXX not what we should get from this
+    def test_roll_method_empty_keep(self) -> None:
+        response = self.bot.roll(['2d20k', '+' '8'])
+        self.assertEqual(
+            response,
+            '2d20k +8 (sum = 0)',
+            '2d20k interpreted as 2d20k2')
+
+    def test_roll_method_keep_comment(self) -> None:
+        response = self.bot.roll(['kick', 'the', 'orc', 'd20', '+', '3'])
+        self.assertEqual(
+            response,
+            'kick the orc (**14**) + 3 (sum = 17)',
+            'kick the orc comment preserved')
+
 
 if __name__ == '__main__':
     unittest.main()

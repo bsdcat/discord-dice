@@ -10,6 +10,7 @@ OP_RE = '^(?P<op>[+-])$'
 
 
 def filter_empty(x: str) -> bool:
+    '''Filter method for empty string arguments after reprocessing.'''
     if x is None:
         return False
     if re.match('^ *$', x):
@@ -18,6 +19,23 @@ def filter_empty(x: str) -> bool:
 
 
 class RollerBot(discord.Client):
+    '''Dice rolling bot for Discord.
+
+    It mainly handles a '!roll' command, and determines what dice to roll.
+
+    A roll consists of one or more addition constants or roll directives,
+    separating by '+' or '-' operators.
+
+    Addition constants must be integers.
+
+    Roll directives are of the form: [X]dY[kZ[h|l]] where
+         X is the number of dice to roll
+         Y is the upper value of the dice (e.g. 'd6' refers to a cube with
+           numbers 1-6 on its faces)
+         Z is the number of those dice to keep
+         h|l refers to whether high dice, or low dice, should be kept
+    '''
+
     async def on_ready(self) -> None:
         print(f'Logged in as {self.user}')
         return

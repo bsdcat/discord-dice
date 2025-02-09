@@ -1,4 +1,5 @@
 import argparse
+from collections import defaultdict
 import discord
 import os
 from random import Random
@@ -71,8 +72,20 @@ def perform_roll(die: int,
 
 
 def format_dice(dice: list[int], kept: list[int]) -> str:
-    return ', '.join(f'**{x}**' if x in kept else str(x) for x in dice) \
-        + f' (sum = {sum(kept)})'
+    kept_dict = defaultdict(int)
+    for die in kept:
+        kept_dict[die] += 1
+    dice_strs = []
+    for die in dice:
+        if kept_dict[die] > 0:
+            dice_strs.append(f'**{die}**')
+            kept_dict[die] -= 1
+        else:
+            dice_strs.append(f'{die}')
+    response = ', '.join(dice_strs)
+    if len(kept) > 1:
+        response += f' (sum = {sum(kept)})'
+    return response
 
 
 class DiceRollTest(unittest.TestCase):
@@ -106,7 +119,7 @@ class DiceRollTest(unittest.TestCase):
     def test_formatting(self) -> None:
         dice, kept = perform_roll(20, count=2, keep=1)
         response = format_dice(dice, kept)
-        self.assertEqual(response, '**14**, 1 (sum = 14)',
+        self.assertEqual(response, '**14**, 1',
                          "formatting advantage roll")
 
     def test_formatting_sum(self) -> None:
@@ -114,6 +127,12 @@ class DiceRollTest(unittest.TestCase):
         response = format_dice(dice, kept)
         self.assertEqual(response, '**4**, **6**, **1** (sum = 11)',
                          "formatting 3d6")
+
+    def test_formatting_repeated(self) -> None:
+        dice, kept = perform_roll(6, count=5, keep=2, hilo='l')
+        response = format_dice(dice, kept)
+        self.assertEqual(response, '4, 6, **1**, **3**, 3 (sum = 4)',
+                         "formatting 5d6k2 with duplicates")
 
 
 intents = discord.Intents.default()

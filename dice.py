@@ -117,6 +117,7 @@ class DiceRollTest(unittest.TestCase):
 
 
 intents = discord.Intents.default()
+intents.message_content = True
 client = discord.Client(intents=intents)
 bot = commands.Bot(command_prefix='!', intents=intents)
 
@@ -134,11 +135,15 @@ async def roll(ctx, dice: str):
     if dice_format is None:
         response = f"I didn't understand that: {dice}"
     else:
-        count = int(dice_format.group('count')) or 1
+        count = 1
+        if dice_format.group('count'):
+            count = int(dice_format.group('count'))
         die = int(dice_format.group('die'))
-        keep = int(dice_format.group('keep')) or count
+        keep = count
+        if dice_format.group('keep'):
+            keep = min(int(dice_format.group('keep')), keep)
         hilo = dice_format.group('hilo') or 'h'
-        dice, kept = perform_roll(count, die=die, keep=keep, hilo=hilo)
+        dice, kept = perform_roll(die, count=count, keep=keep, hilo=hilo)
         response = format_dice(dice, kept)
     await ctx.send(response)
 

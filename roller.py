@@ -65,6 +65,13 @@ class RollerBot(discord.Client):
             case _:
                 return f"I don't understand {args[0]}"
 
+    def commands(self, args: list[str]) -> str:
+        return '''
+You can use the following commands:
+        !roll <comment> [X]d[YY]k[Z][h|l] +/- const ...
+        !commands show this message
+        '''
+
     def roll(self, args: list[str]) -> str:
         response = ''
         my_sum = 0

@@ -1,6 +1,7 @@
 from collections import defaultdict
 import random
 import re
+import shlex
 
 import discord
 
@@ -16,6 +17,20 @@ def filter_empty(x: str) -> bool:
     if re.match('^ *$', x):
         return False
     return True
+
+
+def split_op_args(arg: str, comment=False) -> list[str]:
+    '''Split args by operators if it can't be treated as a comment'''
+    new_args = list(filter(filter_empty, re.split(r'([+-])', arg)))
+    if comment:
+        if ' ' in arg:
+            return [arg]
+        for new_arg in new_args:
+            if not (re.match(OP_RE, new_arg)
+                    or re.match(DICE_RE, new_arg)
+                    or re.match(CONSTANT_RE, new_arg)):
+                return [arg]
+    return new_args
 
 
 class RollerBot(discord.Client):
@@ -45,16 +60,24 @@ class RollerBot(discord.Client):
             return
         if not message.content.startswith('!'):
             return
-        args = message.content.split(' ')
+        args = shlex.split(message.content)
         args[0] = args[0][1:]
         await message.channel.send(self.process_message(args))
 
     def process_roll_args(self, args: list[str]) -> list[str]:
-        arg_str = ' '.join(args)
-        new_args = list(filter(
-            filter_empty,
-            re.split(r'([ +-])', arg_str)))
-        return new_args
+        i = 0
+        my_args = args.copy()
+        while i < len(my_args):
+            # treat the first arg as a possible comment, and if it were quoted,
+            # to add spaces or to have a constant in there, don't split it more
+            split_args = split_op_args(my_args[i], comment=(i == 0))
+            for offset in range(len(split_args)):
+                if offset == 0:
+                    my_args[i] = split_args[offset]
+                else:
+                    my_args.insert(i + offset, split_args[offset])
+            i += len(split_args)
+        return my_args
 
     def process_message(self, args: list[str]) -> str:
         match args[0]:

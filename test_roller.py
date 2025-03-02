@@ -3,7 +3,8 @@ import random
 import re
 import unittest
 
-from roller import DICE_RE, CONSTANT_RE, RollerBot
+from collections.abc import Callable
+from roller import DICE_RE, CONSTANT_RE, RollerBot, split_op_args
 
 
 class DiceRETest(unittest.TestCase):
@@ -141,6 +142,11 @@ class DiceRollTest(unittest.TestCase):
         args = self.bot.process_roll_args(['3d8', '+2d6'])
         self.assertEqual(args, result, '3d8 +2d6 split correctly')
 
+    def test_process_roll_args_quoted_comment_is_preserved(self) -> None:
+        args = self.bot.process_roll_args(['hit AC 20', 'd20'])
+        self.assertEqual(args, ['hit AC 20', 'd20'],
+                         'numbers in first roll arg preserved')
+
     def test_roll_method_3d8_plus_2d6(self) -> None:
         response = self.bot.roll(['3d8', '+', '2d6'])
         self.assertEqual(
@@ -176,6 +182,75 @@ class DiceRollTest(unittest.TestCase):
             response,
             'kick the orc (**14**) + 3 (sum = 17)',
             'kick the orc comment preserved')
+
+
+class SplitArgsTest(unittest.TestCase):
+    def test_split_straight_op(self) -> None:
+        new_args = split_op_args('+')
+        self.assertEqual(new_args, ['+'], '+ is not split')
+
+    def test_split_op_with_space(self) -> None:
+        new_args = split_op_args('8+3')
+        self.assertEqual(new_args, ['8', '+', '3'], '8+3 is split')
+
+    def test_split_roll_with_constant(self) -> None:
+        new_args = split_op_args('d20+3')
+        self.assertEqual(new_args, ['d20', '+', '3'], 'd20+3 is plit')
+
+    def test_split_roll_with_comment(self) -> None:
+        new_args = split_op_args('AC 20', comment=True)
+        self.assertEqual(new_args, ['AC 20'])
+
+
+class PhonyMessage(object):
+    class PhonyChannel(object):
+        def __init__(self, send: Callable[[str], None]):
+            self.send_method = send
+
+        async def send(self, msg: str) -> None:
+            self.send_method(msg)
+
+    def __init__(self,
+                 author: str,
+                 content: str,
+                 send: Callable[[str], None]
+                 ) -> None:
+        self.author = author
+        self.content = content
+        self.channel = self.PhonyChannel(send)
+
+
+class BotTest(unittest.IsolatedAsyncioTestCase):
+    response: str = ''
+
+    def setUp(self) -> None:
+        random.seed(12345)
+        intents = discord.Intents.default()
+        self.bot = RollerBot(intents=intents)
+        self.response = ''
+
+    async def test_on_message_roll(self) -> None:
+        message = PhonyMessage('test_user', '!roll d20',
+                               lambda msg: self.assertEqual(msg, '(**14**) '))
+        await self.bot.on_message(message)
+
+    async def test_on_message_roll_with_quotes(self) -> None:
+        message = PhonyMessage(
+            'test_user',
+            '!roll "to hit AC 20" d20 + 8',
+            lambda msg: setattr(self, 'response', msg))
+        await self.bot.on_message(message)
+        self.assertEqual(self.response, 'to hit AC 20 (**14**) + 8 (sum = 22)',
+                         '20 is not treated as a constant from a quote')
+
+    async def test_on_message_roll_with_quotes_is_still_roll(self) -> None:
+        message = PhonyMessage(
+            'test_user',
+            '!roll "d20" + 8',
+            lambda msg: setattr(self, 'response', msg))
+        await self.bot.on_message(message)
+        self.assertEqual(self.response, '(**14**) + 8 (sum = 22)',
+                         'd20 is not treated as a comment even quoted')
 
 
 if __name__ == '__main__':

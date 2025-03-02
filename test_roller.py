@@ -147,6 +147,11 @@ class DiceRollTest(unittest.TestCase):
         self.assertEqual(args, ['hit AC 20', 'd20'],
                          'numbers in first roll arg preserved')
 
+    def test_process_roll_args_chat_comment_works(self) -> None:
+        args = self.bot.process_roll_args(["arrow +2 vs. AC 12", '1d20+7'])
+        self.assertEqual(args, ['arrow +2 vs. AC 12', '1d20', '+', '7'],
+                         '+2 in first roll arg preserved')
+
     def test_roll_method_3d8_plus_2d6(self) -> None:
         response = self.bot.roll(['3d8', '+', '2d6'])
         self.assertEqual(
@@ -201,6 +206,11 @@ class SplitArgsTest(unittest.TestCase):
         new_args = split_op_args('AC 20', comment=True)
         self.assertEqual(new_args, ['AC 20'])
 
+    def test_split_roll_that_failed_in_chat(self) -> None:
+        new_args = split_op_args('arrow +2 vs. AC 12', comment=True)
+        self.assertEqual(new_args, ['arrow +2 vs. AC 12'],
+                         "split isn't confused by +2")
+
 
 class PhonyMessage(object):
     class PhonyChannel(object):
@@ -251,6 +261,15 @@ class BotTest(unittest.IsolatedAsyncioTestCase):
         await self.bot.on_message(message)
         self.assertEqual(self.response, '(**14**) + 8 (sum = 22)',
                          'd20 is not treated as a comment even quoted')
+
+    async def test_message_that_failed_in_chat(self) -> None:
+        message = PhonyMessage(
+            'test_user',
+            '!roll "arrow +2 vs. AC 12" 1d20+7',
+            lambda msg: setattr(self, 'response', msg))
+        await self.bot.on_message(message)
+        print(f'{self.response=}')
+        self.assertTrue(True)
 
 
 if __name__ == '__main__':

@@ -148,7 +148,7 @@ class DiceRollTest(unittest.TestCase):
                          'numbers in first roll arg preserved')
 
     def test_process_roll_args_chat_comment_works(self) -> None:
-        args = self.bot.process_roll_args(["arrow +2 vs. AC 12", '1d20+7'])
+        args = self.bot.process_roll_args(['arrow +2 vs. AC 12', '1d20+7'])
         self.assertEqual(args, ['arrow +2 vs. AC 12', '1d20', '+', '7'],
                          '+2 in first roll arg preserved')
 
@@ -268,8 +268,9 @@ class BotTest(unittest.IsolatedAsyncioTestCase):
             '!roll "arrow +2 vs. AC 12" 1d20+7',
             lambda msg: setattr(self, 'response', msg))
         await self.bot.on_message(message)
-        print(f'{self.response=}')
-        self.assertTrue(True)
+        self.assertEqual(self.response,
+                         'arrow +2 vs. AC 12 (**14**) + 7 (sum = 21)',
+                         'comment that was tricky in chat works now')
 
 
 if __name__ == '__main__':

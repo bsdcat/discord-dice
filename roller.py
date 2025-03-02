@@ -82,7 +82,7 @@ class RollerBot(discord.Client):
     def process_message(self, args: list[str]) -> str:
         match args[0]:
             case 'roll':
-                return self.roll(self.process_roll_args(args)[1:])
+                return self.roll(self.process_roll_args(args[1:]))
             case 'commands' | 'list_command' | 'list_commands':
                 return self.commands(args[1:])
             case _:
